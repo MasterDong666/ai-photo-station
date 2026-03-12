@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 商品摄影工作站 Pro</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body {
+  background:#0f172a;
+  background-image:radial-gradient(#1e293b 1px, transparent 1px);
+  background-size:18px 18px;
+}
+.glass {background:rgba(255,255,255,.95);backdrop-filter:blur(12px);}
+</style>
+</head>
+
+<body class="min-h-screen text-slate-900">
+
+<!-- 顶部右侧：每日额度 + 用户头像 -->
+<div class="fixed top-4 right-6 z-20 flex items-center gap-3 text-xs text-slate-200">
+  <span class="px-3 py-1 rounded-full bg-slate-900/80 border border-slate-700 shadow-lg">
+    今日剩余额度：<span id="quota-count" class="font-bold text-emerald-300">--</span> 次
+  </span>
+  <!-- 用户头像入口 -->
+  <button id="user-avatar" class="w-9 h-9 rounded-full overflow-hidden border border-slate-600 shadow-xl hover:scale-105 hover:shadow-2xl transition bg-slate-800 flex items-center justify-center">
+    <img id="user-avatar-img" class="w-full h-full object-cover hidden" alt="avatar">
+    <span id="user-avatar-fallback" class="text-[11px] font-black text-slate-100">AI</span>
+  </button>
+</div>
+
+<!-- 用户中心 Modal -->
+<div id="user-modal" class="fixed inset-0 z-40 hidden items-center justify-end bg-black/40 backdrop-blur-sm">
+  <div class="w-full max-w-md h-full bg-slate-950 text-slate-100 border-l border-slate-800 shadow-2xl flex flex-col">
+    <!-- 头部 -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <!-- 头像（可上传） -->
+        <div class="relative">
+          <div class="w-11 h-11 rounded-full overflow-hidden border border-slate-700 bg-slate-900 shadow-lg">
+            <img id="profile-avatar-img" class="w-full h-full object-cover hidden" alt="profile avatar">
+            <div id="profile-avatar-fallback" class="w-full h-full flex items-center justify-center text-sm font-black text-slate-100 bg-gradient-to-br from-slate-800 to-slate-900">
+              AI
+            </div>
+          </div>
+          <button id="profile-avatar-upload-btn" class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 flex items-center justify-center text-sm font-black shadow-lg border border-emerald-300/30" title="上传头像">
+            +
+          </button>
+          <input id="profile-avatar-file" type="file" accept="image/*" class="hidden">
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-500">账户中心</p>
+          <h3 class="text-base font-black" id="user-modal-title">访客模式</h3>
+        </div>
+      </div>
+      <button id="user-modal-close" class="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-xs">
+        ✕
+      </button>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-6 text-xs">
+      <!-- 登录模块 -->
+      <section id="auth-section" class="space-y-2">
+        <div class="flex items-center justify-between">
+          <h4 class="font-semibold text-slate-100 text-sm">登录 / 注册</h4>
+          <div class="flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-[11px]">
+            <button id="auth-tab-login" class="px-2 py-1 rounded-md bg-slate-800 text-slate-100">登录</button>
+            <button id="auth-tab-register" class="px-2 py-1 rounded-md text-slate-300 hover:text-slate-100">注册</button>
+          </div>
+        </div>
+        <p class="text-slate-400">当前已接入后端用户系统（SQLite + bcrypt）。登录后会拿到 token，用于调用生成接口。</p>
+        <div class="mt-2 space-y-2">
+          <input id="auth-username" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="邮箱或手机号">
+          <input id="auth-password" type="password" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="密码（会加密存储）">
+          <button id="auth-login-btn" class="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-xs transition">
+            登录
+          </button>
+          <p id="auth-status" class="text-[11px] text-slate-500"></p>
+        </div>
+      </section>
+
+      <!-- 会员模块 -->
+      <section id="membership-section" class="space-y-3 border-t border-slate-800 pt-4">
+        <div class="flex items-center justify-between">
+          <h4 class="font-semibold text-slate-100 text-sm">会员权益</h4>
+          <span id="membership-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+            当前：免费版
+          </span>
+        </div>
+        <p class="text-slate-400">升级后将解锁无限次生成、更快的响应优先级以及后续的批量生成等高级功能。</p>
+
+        <div class="grid grid-cols-3 gap-2 text-[11px]">
+          <button data-plan="month" class="plan-btn rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-2 py-2 text-left hover:bg-emerald-500/20">
+            <div class="font-semibold text-emerald-300">月度</div>
+            <div class="text-slate-400 mt-1">适合临时冲刺</div>
+          </button>
+          <button data-plan="quarter" class="plan-btn rounded-xl border border-amber-400/60 bg-amber-500/5 px-2 py-2 text-left hover:bg-amber-500/15">
+            <div class="font-semibold text-amber-300">季度</div>
+            <div class="text-slate-400 mt-1">性价比优选</div>
+          </button>
+          <button data-plan="year" class="plan-btn rounded-xl border border-sky-400/60 bg-sky-500/5 px-2 py-2 text-left hover:bg-sky-500/15">
+            <div class="font-semibold text-sky-300">年度</div>
+            <div class="text-slate-400 mt-1">专业创作者推荐</div>
+          </button>
+        </div>
+
+        <!-- 会员激活码：用于永久专业版 -->
+        <div class="mt-2 bg-slate-900/60 rounded-xl p-3 border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-slate-300">已购会员激活码</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+              支持永久会员激活
+            </span>
+          </div>
+          <div class="flex gap-2 mt-1">
+            <input id="membership-code-input" class="flex-1 rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="请输入您的会员激活码">
+            <button id="membership-code-btn" class="px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-slate-900">
+              激活
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500">当前仅为本地演示：输入正确激活码会在本机解锁永久专业版，方便后续接入真实后端。</p>
+        </div>
+
+        <p class="text-[11px] text-slate-500">当前页面仅为前端演示，点击套餐或使用激活码会在本地标记为专业版，方便后续接入真实支付与服务端。</p>
+      </section>
+
+      <!-- 账号信息 & 退出 -->
+      <section id="account-section" class="space-y-2 border-t border-slate-800 pt-4 hidden">
+        <h4 class="font-semibold text-slate-100 text-sm">账号信息</h4>
+        <p class="text-slate-400" id="account-summary">已登录账号：-</p>
+        <p class="text-[11px] text-slate-500" id="subscription-summary"></p>
+        <button id="logout-btn" class="px-3 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-300 hover:bg-slate-800">
+          退出登录
+        </button>
+      </section>
+
+      <!-- 使用反馈 -->
+      <section class="space-y-2 border-t border-slate-800 pt-4">
+        <h4 class="font-semibold text-slate-100 text-sm">使用反馈</h4>
+        <p class="text-slate-400">任何体验问题或新功能想法，都可以先在这里记录。当前会保存在本地，后续可接入云端收集。</p>
+        <textarea id="feedback-text" class="w-full h-20 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="请输入你的想法、遇到的问题或期望的功能..."></textarea>
+        <button id="feedback-submit" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200">
+          保存反馈（存本地）
+        </button>
+        <p id="feedback-status" class="text-[11px] text-slate-500"></p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Freemium 升级弹窗 -->
+<div id="paywall-modal" class="fixed inset-0 z-30 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+  <div class="bg-slate-900 text-slate-100 w-full max-w-md rounded-2xl shadow-2xl border border-slate-700 p-6">
+    <h3 class="text-lg font-black mb-2">今日免费额度已用完</h3>
+    <p class="text-xs text-slate-400 mb-4">
+      升级专业版，解锁 <span class="font-semibold text-emerald-300">无限次极速生成</span>、更稳定的服务质量，以及后续即将上线的批量生成等高级能力。
+    </p>
+
+    <div class="space-y-3 mb-4">
+      <button id="upgrade-btn" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold text-sm transition">
+        立即升级（敬请期待）
+      </button>
+
+      <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700">
+        <label class="block text-[11px] mb-1 text-slate-400">已有激活码</label>
+        <div class="flex gap-2">
+          <input id="vip-code-input" class="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" placeholder="输入激活码">
+          <button id="vip-code-btn" class="px-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-semibold">解锁</button>
+        </div>
+        <p class="mt-2 text-[11px] text-slate-500">激活后本机将获得更高额度（存储在本地，可随时重置）。</p>
+      </div>
+    </div>
+
+    <button id="paywall-close" class="w-full py-2 rounded-xl border border-slate-600 text-xs text-slate-300 hover:bg-slate-800 transition">
+      先看看效果，稍后再说
+    </button>
+  </div>
+</div>
+
+<div class="flex min-h-screen">
+
+<!-- 左侧 -->
+<aside class="w-96 glass p-6 border-r shadow-xl flex flex-col">
+<h1 class="text-2xl font-black mb-2">AI 商品摄影工作站</h1>
+<p class="text-xs text-slate-500 mb-6">Product Vision System</p>
+
+<!-- 上传 -->
+<div id="drop-zone" class="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-slate-100 mb-4">
+<input type="file" id="file-input" multiple hidden accept="image/*">
+<p class="font-bold text-sm">点击上传多角度图片</p>
+<p class="text-xs text-slate-500 mt-1">最多6张</p>
+</div>
+
+<div id="thumbs" class="grid grid-cols-3 gap-2 mb-4"></div>
+
+<!-- 生成模式：专业提示词 / 懒人预设 -->
+<section class="mb-4 space-y-3">
+  <div class="flex items-center justify-between">
+    <p class="text-xs font-semibold text-slate-600">生成模式</p>
+    <div class="flex rounded-lg bg-slate-100 border border-slate-300 p-0.5 text-[11px]">
+      <button id="mode-manual" class="px-2 py-1 rounded-md bg-white text-slate-900 font-medium">专业模式（手动提示词）</button>
+      <button id="mode-preset" class="px-2 py-1 rounded-md text-slate-500 hover:text-slate-900">懒人模式（智能预设）</button>
+    </div>
+  </div>
+
+  <!-- 手动提示词 -->
+  <div id="manual-panel" class="space-y-1">
+    <p class="text-[11px] text-slate-500">手动输入英文或中英混合提示词，更适合追求极致画质与风格可控的专业用户。</p>
+    <textarea id="manual-prompt" class="w-full border rounded-xl p-3 text-xs h-24 bg-white focus:outline-none focus:ring-1 focus:ring-slate-500" placeholder="例如：Minimalist studio shot of a perfume bottle on clean white background, softbox lighting, 800x800, commercial product photography, ultra sharp."></textarea>
+  </div>
+
+  <!-- 电商场景：开箱即用 -->
+  <div id="preset-panel" class="space-y-2 hidden">
+    <p class="text-xs font-semibold text-slate-600">场景 / 风格</p>
+  <div class="flex flex-wrap gap-2 mb-2">
+    <button type="button" data-scene="white_bg" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">白底主图</button>
+    <button type="button" data-scene="transparent_bg" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">透明底</button>
+    <button type="button" data-scene="indoor" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">室内场景</button>
+    <button type="button" data-scene="premium_dark" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">高级感暗调</button>
+    <button type="button" data-scene="beauty" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">美妆柔光</button>
+    <button type="button" data-scene="tech" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">3C 金属</button>
+    <button type="button" data-scene="food" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">食品暖光</button>
+    <button type="button" data-scene="fashion" class="scene-btn rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white font-medium hover:bg-slate-100">服装平铺</button>
+  </div>
+    <p class="text-[11px] text-slate-500 mb-2">光影</p>
+    <div class="flex flex-wrap gap-2 mb-2">
+    <button type="button" data-light="default" class="light-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">默认</button>
+    <button type="button" data-light="left" class="light-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">左侧光</button>
+    <button type="button" data-light="top" class="light-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">顶光</button>
+    <button type="button" data-light="softbox" class="light-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">柔光箱</button>
+    <button type="button" data-light="hard" class="light-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">硬光</button>
+    </div>
+    <p class="text-[11px] text-slate-500 mb-2">材质增强</p>
+    <div class="flex flex-wrap gap-2">
+    <button type="button" data-mat="none" class="mat-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">无</button>
+    <button type="button" data-mat="metal" class="mat-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">金属</button>
+    <button type="button" data-mat="glass" class="mat-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">玻璃</button>
+    <button type="button" data-mat="matte" class="mat-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">磨砂</button>
+      <button type="button" data-mat="wood" class="mat-btn rounded-lg px-2 py-1 text-[11px] border border-slate-200 bg-slate-50 font-medium hover:bg-slate-100">木纹</button>
+    </div>
+  </div>
+</section>
+
+<button id="genBtn" class="bg-slate-900 text-white py-3 rounded-xl font-black hover:bg-black transition">
+开始生成
+</button>
+
+<button id="clearBtn" class="bg-red-500 text-white py-2 rounded-xl font-bold hover:bg-red-600 transition mt-2 hidden">
+清空所有
+</button>
+
+<div id="log" class="text-xs mt-4 text-slate-600 whitespace-pre-line"></div>
+</aside>
+
+<!-- 右侧 -->
+<main class="flex-1 p-10">
+<h2 class="text-white font-black mb-6">四视图生成矩阵</h2>
+
+<div id="grid" class="grid grid-cols-2 gap-6 hidden">
+<img id="img0" class="rounded-xl shadow-xl">
+<img id="img1" class="rounded-xl shadow-xl">
+<img id="img2" class="rounded-xl shadow-xl">
+<img id="img3" class="rounded-xl shadow-xl">
+</div>
+</main>
+
+</div>
+
+<script>
+const input = document.getElementById("file-input");
+const drop = document.getElementById("drop-zone");
+const thumbs = document.getElementById("thumbs");
+const btn = document.getElementById("genBtn");
+const clearBtn = document.getElementById("clearBtn");
+const log = document.getElementById("log");
+const grid = document.getElementById("grid");
+const modeManualBtn = document.getElementById("mode-manual");
+const modePresetBtn = document.getElementById("mode-preset");
+const manualPanel = document.getElementById("manual-panel");
+const presetPanel = document.getElementById("preset-panel");
+const manualPromptInput = document.getElementById("manual-prompt");
+const quotaCountEl = document.getElementById("quota-count");
+const userAvatarBtn = document.getElementById("user-avatar");
+const userAvatarImg = document.getElementById("user-avatar-img");
+const userAvatarFallback = document.getElementById("user-avatar-fallback");
+const userModal = document.getElementById("user-modal");
+const userModalClose = document.getElementById("user-modal-close");
+const userModalTitle = document.getElementById("user-modal-title");
+const profileAvatarImg = document.getElementById("profile-avatar-img");
+const profileAvatarFallback = document.getElementById("profile-avatar-fallback");
+const profileAvatarUploadBtn = document.getElementById("profile-avatar-upload-btn");
+const profileAvatarFile = document.getElementById("profile-avatar-file");
+const authSection = document.getElementById("auth-section");
+const membershipBadge = document.getElementById("membership-badge");
+const accountSection = document.getElementById("account-section");
+const accountSummary = document.getElementById("account-summary");
+const subscriptionSummary = document.getElementById("subscription-summary");
+const authUsername = document.getElementById("auth-username");
+const authPassword = document.getElementById("auth-password");
+const authLoginBtn = document.getElementById("auth-login-btn");
+const authTabLogin = document.getElementById("auth-tab-login");
+const authTabRegister = document.getElementById("auth-tab-register");
+const authStatus = document.getElementById("auth-status");
+const logoutBtn = document.getElementById("logout-btn");
+const planButtons = document.querySelectorAll(".plan-btn");
+const feedbackText = document.getElementById("feedback-text");
+const feedbackSubmit = document.getElementById("feedback-submit");
+const feedbackStatus = document.getElementById("feedback-status");
+const membershipCodeInput = document.getElementById("membership-code-input");
+const membershipCodeBtn = document.getElementById("membership-code-btn");
+const paywallModal = document.getElementById("paywall-modal");
+const paywallClose = document.getElementById("paywall-close");
+const vipCodeInput = document.getElementById("vip-code-input");
+const vipCodeBtn = document.getElementById("vip-code-btn");
+
+let images = [];
+
+// 接口根地址：本地开发默认 localhost；接入云服务器时改为你的域名或 IP（或在 Electron 中通过 window.__API_BASE__ 注入）
+const API_BASE = (typeof window !== "undefined" && window.__API_BASE__) ? window.__API_BASE__ : "http://47.94.145.200:3000";
+
+// 本地 Freemium 配置
+const DAILY_FREE_LIMIT = 3;
+const STORAGE_KEY = "ai_photo_daily_quota_v1";
+const USER_STORAGE_KEY = "ai_photo_user_v1";
+const FEEDBACK_STORAGE_KEY = "ai_photo_feedback_v1";
+const AUTH_TOKEN_KEY = "ai_photo_auth_token_v1";
+
+function setAuthStatus(text) {
+  if (!authStatus) return;
+  authStatus.textContent = text || "";
+}
+
+function saveToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_KEY, token);
+    else localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch (e) {}
+}
+
+function loadToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function getTodayKey() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
+function loadQuota() {
+  const today = getTodayKey();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return { date: today, remaining: DAILY_FREE_LIMIT, isVip: false };
+    }
+    const data = JSON.parse(raw);
+    if (!data.isVip && data.date !== today) {
+      return { date: today, remaining: DAILY_FREE_LIMIT, isVip: false };
+    }
+    return {
+      date: data.date || today,
+      remaining: typeof data.remaining === "number" ? data.remaining : DAILY_FREE_LIMIT,
+      isVip: !!data.isVip
+    };
+  } catch (e) {
+    return { date: today, remaining: DAILY_FREE_LIMIT, isVip: false };
+  }
+}
+
+let quotaState = loadQuota();
+
+function saveQuota() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(quotaState));
+  } catch (e) {
+    // 忽略本地存储异常，保证主流程可用
+  }
+}
+
+function updateQuotaUI() {
+  if (!quotaCountEl) return;
+  quotaCountEl.textContent = quotaState.isVip ? "无限" : quotaState.remaining;
+}
+
+// 用户与会员本地状态
+let userState = loadUser();
+updateUserUIFromState();
+
+// 加载用户信息
+function loadUser() {
+  try {
+    const raw = localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) return { loggedIn: false, username: "", plan: null, planUntil: null, avatar: "" };
+    const data = JSON.parse(raw);
+    return {
+      loggedIn: !!data.loggedIn,
+      username: data.username || "",
+      plan: data.plan || null,
+      planUntil: data.planUntil || null,
+      avatar: data.avatar || ""
+    };
+  } catch (e) {
+    return { loggedIn: false, username: "", plan: null, planUntil: null, avatar: "" };
+  }
+}
+
+function saveUser() {
+  try {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userState));
+  } catch (e) {}
+}
+
+function isPlanActive() {
+  if (!userState.plan) return false;
+  if (userState.plan === "lifetime") return true;
+  if (!userState.planUntil) return false;
+  const now = new Date();
+  const until = new Date(userState.planUntil);
+  return now <= until;
+}
+
+function updateUserUIFromState() {
+  const active = isPlanActive();
+  const displayName = userState.loggedIn && userState.username ? userState.username : "访客模式";
+  // 顶部标题更偏“身份”，头像体现个人；不直接展示手机号
+  if (userModalTitle) userModalTitle.textContent = userState.loggedIn ? "账户已登录" : "访客模式";
+
+  // 头像渲染（用户上传优先，否则用默认字母头像）
+  const avatarUrl = userState.avatar || "";
+  const letter = (userState.username || "AI").trim().slice(0, 1).toUpperCase() || "AI";
+
+  if (userAvatarFallback) userAvatarFallback.textContent = letter;
+  if (profileAvatarFallback) profileAvatarFallback.textContent = letter;
+
+  if (avatarUrl) {
+    if (userAvatarImg) {
+      userAvatarImg.src = avatarUrl;
+      userAvatarImg.classList.remove("hidden");
+    }
+    if (userAvatarFallback) userAvatarFallback.classList.add("hidden");
+    if (profileAvatarImg) {
+      profileAvatarImg.src = avatarUrl;
+      profileAvatarImg.classList.remove("hidden");
+    }
+    if (profileAvatarFallback) profileAvatarFallback.classList.add("hidden");
+  } else {
+    if (userAvatarImg) userAvatarImg.classList.add("hidden");
+    if (userAvatarFallback) userAvatarFallback.classList.remove("hidden");
+    if (profileAvatarImg) profileAvatarImg.classList.add("hidden");
+    if (profileAvatarFallback) profileAvatarFallback.classList.remove("hidden");
+  }
+
+  if (membershipBadge) {
+    if (active) {
+      let label = "专业版";
+      if (userState.plan === "year") label = "年度专业版";
+      else if (userState.plan === "quarter") label = "季度专业版";
+      else if (userState.plan === "month") label = "月度专业版";
+      else if (userState.plan === "lifetime") label = "永久专业版";
+      membershipBadge.textContent = `当前：${label}`;
+      membershipBadge.classList.remove("bg-slate-800");
+      membershipBadge.classList.add("bg-emerald-600/20","text-emerald-300","border-emerald-500/60");
+    } else {
+      membershipBadge.textContent = "当前：免费版";
+      membershipBadge.className = "px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 border border-slate-700";
+    }
+  }
+
+  if (accountSection && accountSummary) {
+    if (userState.loggedIn) {
+      accountSection.classList.remove("hidden");
+      accountSummary.textContent = `已登录账号：${displayName}`;
+      if (subscriptionSummary) {
+        if (active) {
+          if (userState.plan === "lifetime") {
+            subscriptionSummary.textContent = "订阅状态：永久专业版（不过期）";
+          } else if (userState.planUntil) {
+            subscriptionSummary.textContent = `订阅状态：${userState.plan}（有效期至 ${new Date(userState.planUntil).toLocaleString()}）`;
+          } else {
+            subscriptionSummary.textContent = "订阅状态：专业版（未知到期时间）";
+          }
+        } else {
+          subscriptionSummary.textContent = "订阅状态：免费版（按天赠送额度）";
+        }
+      }
+      if (authSection) authSection.classList.add("hidden");
+    } else {
+      accountSection.classList.add("hidden");
+      if (subscriptionSummary) subscriptionSummary.textContent = "";
+      if (authSection) authSection.classList.remove("hidden");
+    }
+  }
+
+  // 会员与 VIP 关联到额度系统
+  quotaState.isVip = quotaState.isVip || active;
+  updateQuotaUI();
+}
+
+// Auth UI 模式：login / register
+let authMode = "login";
+function setAuthMode(mode) {
+  authMode = mode === "register" ? "register" : "login";
+  if (authTabLogin && authTabRegister) {
+    if (authMode === "login") {
+      authTabLogin.className = "px-2 py-1 rounded-md bg-slate-800 text-slate-100";
+      authTabRegister.className = "px-2 py-1 rounded-md text-slate-300 hover:text-slate-100";
+    } else {
+      authTabRegister.className = "px-2 py-1 rounded-md bg-slate-800 text-slate-100";
+      authTabLogin.className = "px-2 py-1 rounded-md text-slate-300 hover:text-slate-100";
+    }
+  }
+  if (authLoginBtn) authLoginBtn.textContent = authMode === "login" ? "登录" : "注册";
+  setAuthStatus("");
+}
+
+if (authTabLogin) authTabLogin.onclick = () => setAuthMode("login");
+if (authTabRegister) authTabRegister.onclick = () => setAuthMode("register");
+setAuthMode("login");
+
+function openPaywall() {
+  if (!paywallModal) return;
+  paywallModal.classList.remove("hidden");
+  paywallModal.classList.add("flex");
+}
+
+function closePaywall() {
+  if (!paywallModal) return;
+  paywallModal.classList.add("hidden");
+  paywallModal.classList.remove("flex");
+}
+
+// 绑定激活码与关闭事件
+if (paywallClose) {
+  paywallClose.onclick = () => {
+    closePaywall();
+  };
+}
+
+if (paywallModal) {
+  paywallModal.addEventListener("click", (e) => {
+    if (e.target === paywallModal) {
+      closePaywall();
+    }
+  });
+}
+
+if (vipCodeBtn) {
+  vipCodeBtn.onclick = () => {
+    const code = (vipCodeInput.value || "").trim();
+    if (code === "vip2026") {
+      quotaState = { date: getTodayKey(), remaining: 999, isVip: true };
+      saveQuota();
+      updateQuotaUI();
+      alert("激活成功，已为本机解锁专业版额度。");
+      closePaywall();
+    } else {
+      alert("激活码无效，请确认后重新输入。");
+    }
+  };
+}
+
+updateQuotaUI();
+updateUserUIFromState();
+
+// 用户中心交互
+function openUserModal() {
+  if (!userModal) return;
+  userModal.classList.remove("hidden");
+  userModal.classList.add("flex");
+}
+
+function closeUserModal() {
+  if (!userModal) return;
+  userModal.classList.add("hidden");
+  userModal.classList.remove("flex");
+}
+
+if (userAvatarBtn) {
+  userAvatarBtn.onclick = () => {
+    openUserModal();
+  };
+}
+
+if (userModalClose) {
+  userModalClose.onclick = () => {
+    closeUserModal();
+  };
+}
+
+if (userModal) {
+  userModal.addEventListener("click", (e) => {
+    if (e.target === userModal) closeUserModal();
+  });
+}
+
+if (authLoginBtn) {
+  authLoginBtn.onclick = async () => {
+    const username = (authUsername.value || "").trim();
+    const password = (authPassword.value || "").trim();
+    if (!username || !password) {
+      alert("请输入账号和密码。");
+      return;
+    }
+    try {
+      setAuthStatus(authMode === "login" ? "正在登录..." : "正在注册...");
+      const endpoint = authMode === "login" ? "/login" : "/register";
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthStatus("");
+        alert(data?.error || "操作失败");
+        return;
+      }
+
+      // /login 与 /register 都返回 { token, user }
+      saveToken(data.token);
+
+      userState.loggedIn = true;
+      userState.username = data.user?.username || username;
+      // 订阅信息从后端同步到本地（方案B）
+      if (data.subscription && data.subscription.active) {
+        userState.plan = data.subscription.plan === "lifetime" ? "lifetime" : data.subscription.plan;
+        userState.planUntil = data.subscription.expires_at || null;
+      } else {
+        userState.plan = null;
+        userState.planUntil = null;
+      }
+      saveUser();
+
+      // 从后端状态同步会员/剩余次数（先按 is_member 影响 VIP）
+      quotaState.isVip = !!data.user?.is_member;
+      saveQuota();
+      updateUserUIFromState();
+
+      setAuthStatus("");
+      alert(authMode === "login" ? "登录成功" : "注册成功");
+    } catch (e) {
+      setAuthStatus("");
+      alert("网络错误：无法连接后端服务");
+    }
+  };
+}
+
+if (logoutBtn) {
+  logoutBtn.onclick = () => {
+    if (!confirm("确定要退出登录吗？这不会影响已解锁的本地额度。")) return;
+    userState = { loggedIn: false, username: "", plan: null, planUntil: null, avatar: "" };
+    saveUser();
+    saveToken("");
+    updateUserUIFromState();
+  };
+}
+
+// 头像上传：点击“+”选择图片，压缩成方形并保存到本地
+function compressAvatarToDataUrl(file, size = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = size;
+        canvas.height = size;
+
+        const side = Math.min(img.width, img.height);
+        const sx = Math.floor((img.width - side) / 2);
+        const sy = Math.floor((img.height - side) / 2);
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if (profileAvatarUploadBtn && profileAvatarFile) {
+  profileAvatarUploadBtn.onclick = () => {
+    // 未登录也允许设置本机头像（可按需改成必须登录）
+    profileAvatarFile.click();
+  };
+
+  profileAvatarFile.onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件。");
+      return;
+    }
+    try {
+      const dataUrl = await compressAvatarToDataUrl(file);
+      userState.avatar = dataUrl;
+      saveUser();
+      updateUserUIFromState();
+      alert("头像已更新（保存在本机）。");
+    } catch (err) {
+      alert("头像处理失败，请换一张图片再试。");
+    } finally {
+      profileAvatarFile.value = "";
+    }
+  };
+}
+
+// 购买会员：调用后端 /subscribe 写入 subscriptions（方案B）
+if (planButtons && planButtons.length) {
+  planButtons.forEach(btnPlan => {
+    btnPlan.onclick = async () => {
+      if (!loadToken()) {
+        alert("请先登录后再开通会员。");
+        openUserModal();
+        return;
+      }
+      const plan = btnPlan.getAttribute("data-plan");
+      try {
+        const res = await fetch(`${API_BASE}/subscribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${loadToken()}`
+          },
+          body: JSON.stringify({ plan })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data?.error || "开通失败");
+          return;
+        }
+        // 更新本地状态
+        if (data.subscription && data.subscription.active) {
+          userState.plan = data.subscription.plan;
+          userState.planUntil = data.subscription.expires_at || null;
+          quotaState.isVip = true;
+          saveQuota();
+        }
+        saveUser();
+        updateUserUIFromState();
+        alert("开通成功（已写入数据库 subscriptions）。");
+      } catch (e) {
+        alert("网络错误：无法连接后端服务");
+      }
+    };
+  });
+}
+
+// 会员激活码：调用后端 /redeem 写入 subscriptions（永久专业版）
+if (membershipCodeBtn) {
+  membershipCodeBtn.onclick = async () => {
+    if (!loadToken()) {
+      alert("请先登录后再激活会员。");
+      openUserModal();
+      return;
+    }
+    const code = (membershipCodeInput.value || "").trim();
+    if (!code) {
+      alert("请输入激活码。");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/redeem`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${loadToken()}`
+        },
+        body: JSON.stringify({ code })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data?.error || "激活失败");
+        return;
+      }
+      if (data.subscription && data.subscription.active) {
+        userState.plan = data.subscription.plan;
+        userState.planUntil = data.subscription.expires_at || null;
+        quotaState.isVip = true;
+        saveQuota();
+      }
+      saveUser();
+      updateUserUIFromState();
+      alert("激活成功（已写入数据库 subscriptions）。");
+    } catch (e) {
+      alert("网络错误：无法连接后端服务");
+    }
+  };
+}
+
+// 使用反馈存本地
+function loadFeedback() {
+  try {
+    const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (raw && feedbackText) feedbackText.value = raw;
+  } catch (e) {}
+}
+
+loadFeedback();
+
+if (feedbackSubmit) {
+  feedbackSubmit.onclick = () => {
+    try {
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, feedbackText.value || "");
+      if (feedbackStatus) {
+        feedbackStatus.textContent = `已保存于本地（${new Date().toLocaleTimeString()}）`;
+      }
+    } catch (e) {
+      alert("保存失败：本地存储不可用。");
+    }
+  };
+}
+
+drop.onclick = () => input.click();
+input.onchange = e => handleFiles(e.target.files);
+
+/* ✅ 自动压缩并处理文件：添加删除功能 */
+async function handleFiles(files) {
+  // 遍历上传的文件
+  for (const file of files) {
+    // 限制上传数量
+    if (images.length >= 6) {
+      alert("最多上传 6 张图片");
+      break;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imgElement = new Image();
+      imgElement.src = e.target.result;
+
+      imgElement.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // 1. 设置压缩尺寸：最大宽度 1024px，高度按比例缩放
+        const maxWidth = 1024;
+        let width = imgElement.width;
+        let height = imgElement.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // 2. 绘制图片到 Canvas
+        ctx.drawImage(imgElement, 0, 0, width, height);
+
+        // 3. 导出压缩后的 Base64 (JPEG 格式，70% 质量)
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+
+        // 4. 更新数据数组和预览界面
+        // 去掉 data:image/jpeg;base64, 前缀以便 API 使用
+        const imageIndex = images.length;
+        images.push(compressedBase64.split(",")[1]); 
+        
+        // 创建预览容器（包含图片和删除按钮）
+        const thumbContainer = document.createElement("div");
+        thumbContainer.className = "relative group";
+        thumbContainer.dataset.index = imageIndex;
+        
+        // 图片
+        const thumbImg = document.createElement("img");
+        thumbImg.src = compressedBase64;
+        thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full";
+        
+        // 删除按钮
+        const deleteBtn = document.createElement("button");
+        deleteBtn.innerHTML = "×";
+        deleteBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold hover:bg-red-600 transition opacity-0 group-hover:opacity-100 shadow-lg";
+        deleteBtn.onclick = (e) => {
+          e.stopPropagation();
+          deleteImage(imageIndex);
+        };
+        
+        thumbContainer.appendChild(thumbImg);
+        thumbContainer.appendChild(deleteBtn);
+        thumbs.appendChild(thumbContainer);
+      };
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+/* ✅ 删除单张图片 */
+function deleteImage(index) {
+  // 从数组中删除
+  images.splice(index, 1);
+  
+  // 重新渲染所有预览图
+  renderThumbs();
+}
+
+/* ✅ 重新渲染预览图 */
+function renderThumbs() {
+  thumbs.innerHTML = "";
+  images.forEach((imgBase64, index) => {
+    const compressedBase64 = "data:image/jpeg;base64," + imgBase64;
+    
+    const thumbContainer = document.createElement("div");
+    thumbContainer.className = "relative group";
+    thumbContainer.dataset.index = index;
+    
+    const thumbImg = document.createElement("img");
+    thumbImg.src = compressedBase64;
+    thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full";
+    
+    const deleteBtn = document.createElement("button");
+    deleteBtn.innerHTML = "×";
+    deleteBtn.className = "absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold hover:bg-red-600 transition opacity-0 group-hover:opacity-100 shadow-lg";
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteImage(index);
+    };
+    
+    thumbContainer.appendChild(thumbImg);
+    thumbContainer.appendChild(deleteBtn);
+    thumbs.appendChild(thumbContainer);
+  });
+}
+
+/* ✅ 清空所有内容 */
+function clearAll() {
+  images = [];
+  thumbs.innerHTML = "";
+  grid.classList.add("hidden");
+  log.innerText = "";
+  clearBtn.classList.add("hidden");
+  btn.disabled = false;
+  setPresetUI("white_bg", "default", "none");
+}
+
+/* ✅ 自动识别主体 */
+async function analyze() {
+  log.innerText = "🔍 正在识别商品...";
+  try {
+    const res = await fetch(`${API_BASE}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ images })
+    });
+    const data = await res.json();
+    // 关键：正则过滤掉 Markdown 的代码块标签
+    const cleanedText = data.result.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleanedText);
+  } catch (err) {
+    console.error("解析失败:", err);
+    log.innerText = "❌ 识别失败，请检查控制台";
+    throw err;
+  }
+}
+
+// 预设 4 种不同拍摄视角（包含不同景别）
+const PRESET_ANGLES = [
+  "Wide scene shot showing the product on its environment, more background visible",
+  "Hero shot at 45 degree angle focusing on the product and pedestal",
+  "Macro close-up detail shot emphasizing texture, label and material",
+  "Top-down flat lay view showing the whole setup and composition"
+];
+
+// 电商预设状态（开箱即用）
+let selectedScene = "white_bg";
+let selectedLight = "default";
+let selectedMaterial = "none";
+let generateMode = "manual"; // manual | preset
+
+function setGenerateMode(mode) {
+  generateMode = mode === "preset" ? "preset" : "manual";
+  if (modeManualBtn && modePresetBtn && manualPanel && presetPanel) {
+    const isManual = generateMode === "manual";
+    modeManualBtn.className = "px-2 py-1 rounded-md " + (isManual ? "bg-white text-slate-900 font-medium" : "text-slate-500 hover:text-slate-900");
+    modePresetBtn.className = "px-2 py-1 rounded-md " + (!isManual ? "bg-white text-slate-900 font-medium" : "text-slate-500 hover:text-slate-900");
+    manualPanel.classList.toggle("hidden", !isManual);
+    presetPanel.classList.toggle("hidden", isManual);
+  }
+}
+
+function setPresetUI(scene, light, mat) {
+  selectedScene = scene || "white_bg";
+  selectedLight = light || "default";
+  selectedMaterial = mat || "none";
+  document.querySelectorAll(".scene-btn").forEach(el => {
+    el.classList.toggle("bg-slate-900", el.dataset.scene === selectedScene);
+    el.classList.toggle("text-white", el.dataset.scene === selectedScene);
+    el.classList.toggle("border-slate-900", el.dataset.scene === selectedScene);
+    el.classList.toggle("bg-white", el.dataset.scene !== selectedScene);
+  });
+  document.querySelectorAll(".light-btn").forEach(el => {
+    el.classList.toggle("bg-slate-800", el.dataset.light === selectedLight);
+    el.classList.toggle("text-white", el.dataset.light === selectedLight);
+    el.classList.toggle("bg-slate-50", el.dataset.light !== selectedLight);
+  });
+  document.querySelectorAll(".mat-btn").forEach(el => {
+    el.classList.toggle("bg-slate-800", el.dataset.mat === selectedMaterial);
+    el.classList.toggle("text-white", el.dataset.mat === selectedMaterial);
+    el.classList.toggle("bg-slate-50", el.dataset.mat !== selectedMaterial);
+  });
+}
+
+document.querySelectorAll(".scene-btn").forEach(btn => {
+  btn.addEventListener("click", () => setPresetUI(btn.dataset.scene, selectedLight, selectedMaterial));
+});
+document.querySelectorAll(".light-btn").forEach(btn => {
+  btn.addEventListener("click", () => setPresetUI(selectedScene, btn.dataset.light, selectedMaterial));
+});
+document.querySelectorAll(".mat-btn").forEach(btn => {
+  btn.addEventListener("click", () => setPresetUI(selectedScene, selectedLight, btn.dataset.mat));
+});
+setPresetUI("white_bg", "default", "none");
+
+if (modeManualBtn) modeManualBtn.onclick = () => setGenerateMode("manual");
+if (modePresetBtn) modePresetBtn.onclick = () => setGenerateMode("preset");
+setGenerateMode("manual");
+
+/* ✅ 生成图片：支持两种模式
+   - manual：使用手动提示词 prompt
+   - preset：使用 profile + 预设（场景/光影/材质）
+*/
+async function generate(profile, imgs, angle) {
+  const token = loadToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const body = {
+    images: imgs,
+    angle
+  };
+
+  if (generateMode === "manual") {
+    const manualPrompt = (manualPromptInput?.value || "").trim();
+    body.prompt = manualPrompt || "Professional product photography, 800x800, clean e-commerce style.";
+  } else {
+    body.profile = profile;
+    body.stylePreset = selectedScene;
+    body.lighting = selectedLight;
+    body.material = selectedMaterial;
+  }
+
+  const res = await fetch(`${API_BASE}/generate`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (res.status === 402) throw new Error(data?.error || "今日免费额度已用完");
+  return "data:image/png;base64," + data.image;
+}
+
+btn.onclick = async ()=>{
+  if(images.length==0){alert("先上传图片");return;}
+
+  // Freemium：非专业版用户且今日额度为 0，弹出付费墙而不是继续请求
+  if (!quotaState.isVip && quotaState.remaining <= 0) {
+    openPaywall();
+    return;
+  }
+
+  // 新后端鉴权：必须先登录拿到 token
+  if (!loadToken()) {
+    alert("请先在右上角头像里登录后再生成。");
+    openUserModal();
+    return;
+  }
+
+  btn.disabled = true;
+  grid.classList.add("hidden");
+
+  const profile = await analyze();
+  log.innerText = "📦 商品识别完成：\n" + JSON.stringify(profile, null, 2);
+
+  let base = null;
+  const outputs = [];
+
+  for (let i = 0; i < 4; i++) {
+    const angle = PRESET_ANGLES[i];
+    log.innerText += `\n🎨 正在生成第 ${i + 1} 张（${angle}）...`;
+    try {
+      const img = await generate(profile, base ? [base, ...images] : images, angle);
+      if (i === 0) base = img.split(",")[1];
+      outputs.push(img);
+    } catch (e) {
+      if (e?.message && e.message.includes("额度")) {
+        openPaywall();
+        btn.disabled = false;
+        return;
+      }
+      throw e;
+    }
+  }
+
+  document.getElementById("img0").src=outputs[0];
+  document.getElementById("img1").src=outputs[1];
+  document.getElementById("img2").src=outputs[2];
+  document.getElementById("img3").src=outputs[3];
+
+  grid.classList.remove("hidden");
+
+  // 成功生成 4 张图后，扣除一次额度（仅限非专业版）
+  if (!quotaState.isVip && quotaState.remaining > 0) {
+    quotaState.remaining -= 1;
+    saveQuota();
+    updateQuotaUI();
+  }
+
+  btn.disabled=false;
+  log.innerText+="\n✅ 生成完成";
+  
+  // 显示清空按钮
+  clearBtn.classList.remove("hidden");
+}
+
+// 清空按钮点击事件
+clearBtn.onclick = clearAll;
+</script>
+</body>
+</html>
