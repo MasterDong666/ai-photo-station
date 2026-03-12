@@ -1049,13 +1049,18 @@ async function generate(profile, imgs, angle) {
     body.material = selectedMaterial;
   }
 
-  const res = await fetch(`${API_BASE}/generate`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
+  const opts = { method: "POST", headers, body: JSON.stringify(body) };
+  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) opts.signal = AbortSignal.timeout(180000);
+  const res = await fetch(`${API_BASE}/generate`, opts);
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    if (res.status === 502) throw new Error("生成请求超时或服务暂时不可用，请稍后重试");
+    throw new Error(res.statusText || "请求失败，请重试");
+  }
   if (res.status === 402) throw new Error(data?.error || "今日免费额度已用完");
+  if (!res.ok) throw new Error(data?.error || "生成失败，请重试");
   return "data:image/png;base64," + data.image;
 }
 
@@ -1078,48 +1083,52 @@ btn.onclick = async ()=>{
   btn.disabled = true;
   grid.classList.add("hidden");
 
-  const profile = await analyze();
-  log.innerText = "📦 商品识别完成：\n" + JSON.stringify(profile, null, 2);
+  try {
+    const profile = await analyze();
+    log.innerText = "📦 商品识别完成：\n" + JSON.stringify(profile, null, 2);
 
-  let base = null;
-  const outputs = [];
+    let base = null;
+    const outputs = [];
 
-  for (let i = 0; i < 4; i++) {
-    const angle = PRESET_ANGLES[i];
-    log.innerText += `\n🎨 正在生成第 ${i + 1} 张（${angle}）...`;
-    try {
-      const img = await generate(profile, base ? [base, ...images] : images, angle);
-      if (i === 0) base = img.split(",")[1];
-      outputs.push(img);
-    } catch (e) {
-      if (e?.message && e.message.includes("额度")) {
-        openPaywall();
-        btn.disabled = false;
-        return;
+    for (let i = 0; i < 4; i++) {
+      const angle = PRESET_ANGLES[i];
+      log.innerText += `\n🎨 正在生成第 ${i + 1} 张（${angle}）...`;
+      try {
+        const img = await generate(profile, base ? [base, ...images] : images, angle);
+        if (i === 0) base = img.split(",")[1];
+        outputs.push(img);
+      } catch (e) {
+        if (e?.message && e.message.includes("额度")) {
+          openPaywall();
+          btn.disabled = false;
+          return;
+        }
+        throw e;
       }
-      throw e;
     }
+
+    document.getElementById("img0").src=outputs[0];
+    document.getElementById("img1").src=outputs[1];
+    document.getElementById("img2").src=outputs[2];
+    document.getElementById("img3").src=outputs[3];
+
+    grid.classList.remove("hidden");
+
+    // 成功生成 4 张图后，扣除一次额度（仅限非专业版）
+    if (!quotaState.isVip && quotaState.remaining > 0) {
+      quotaState.remaining -= 1;
+      saveQuota();
+      updateQuotaUI();
+    }
+
+    log.innerText+="\n✅ 生成完成";
+    clearBtn.classList.remove("hidden");
+  } catch (e) {
+    log.innerText += "\n❌ " + (e?.message || "生成失败");
+    alert(e?.message || "生成失败，请重试");
+    grid.classList.remove("hidden");
   }
-
-  document.getElementById("img0").src=outputs[0];
-  document.getElementById("img1").src=outputs[1];
-  document.getElementById("img2").src=outputs[2];
-  document.getElementById("img3").src=outputs[3];
-
-  grid.classList.remove("hidden");
-
-  // 成功生成 4 张图后，扣除一次额度（仅限非专业版）
-  if (!quotaState.isVip && quotaState.remaining > 0) {
-    quotaState.remaining -= 1;
-    saveQuota();
-    updateQuotaUI();
-  }
-
-  btn.disabled=false;
-  log.innerText+="\n✅ 生成完成";
-  
-  // 显示清空按钮
-  clearBtn.classList.remove("hidden");
+  btn.disabled = false;
 }
 
 // 清空按钮点击事件
