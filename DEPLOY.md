@@ -84,9 +84,12 @@ npm install --omit=dev
 
 ## 四、配置环境变量
 
-1. **复制示例配置**
+**重要**：`.env` 不在 Git 里（已在 .gitignore），服务器上必须自己建，否则会 503（未配置 GEMINI_KEY）。`git pull` / `git reset` 不会覆盖 `.env`，但若目录是全新 clone 的，需要新建。
+
+1. **复制示例配置（若已有 .env.example）或新建**
    ```bash
    cp .env.example .env
+   # 若没有 .env.example，直接新建：nano .env
    ```
 
 2. **编辑 .env**

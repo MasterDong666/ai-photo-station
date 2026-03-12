@@ -2,11 +2,15 @@ import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { openDb, initDb, get, run, all } from "./db.js";
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// 从 server.js 所在目录加载 .env，避免 PM2 工作目录不同导致读不到
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 app.use(cors());
