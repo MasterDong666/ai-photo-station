@@ -439,9 +439,13 @@ export function startServer(port = 3000, host = "127.0.0.1") {
 }
 
 // 如果直接运行此文件（云服务器或本地单独跑后端），自动启动
+// PM2 启动时 argv 可能和直接 node server.js 不同，用 pm_id 判断
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
-const isMain = process.argv[1] === __filename || process.argv[1]?.endsWith("server.js");
+const isMain =
+  process.argv[1] === __filename ||
+  process.argv[1]?.endsWith("server.js") ||
+  (process.env.pm_id !== undefined && process.argv[1]?.includes?.("server"));
 if (isMain) {
   const port = Number(process.env.PORT) || 3000;
   const host = process.env.HOST || "0.0.0.0";
