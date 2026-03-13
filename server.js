@@ -346,9 +346,9 @@ function buildCommercialPrompt(angle, profile, stylePreset, lighting, material) 
 
 /* ✅ 2. 生成接口：支持 preset 或旧版 prompt；统一电商化输出说明 */
 app.post("/generate", requireDb, authMiddleware, async (req, res) => {
-  // 单张图生成可能需 1～2 分钟，避免被默认超时断开导致 502
-  req.setTimeout(180000);
-  res.setTimeout(180000);
+  // 单张图生成可能需 1～3 分钟，避免被默认超时断开导致 502
+  req.setTimeout(300000);
+  res.setTimeout(300000);
   console.log("🎨 正在生成背景图...");
   if (!GEMINI_KEY) return res.status(503).json({ error: "服务未配置 GEMINI_KEY，请在服务器 .env 中设置" });
   try {

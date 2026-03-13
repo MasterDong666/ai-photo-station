@@ -953,8 +953,10 @@ async function analyze() {
       body: JSON.stringify({ images })
     });
     const data = await res.json();
-    // 关键：正则过滤掉 Markdown 的代码块标签
-    const cleanedText = data.result.replace(/```json/g, "").replace(/```/g, "").trim();
+    if (!res.ok) throw new Error(data?.error || "识别请求失败");
+    const raw = data?.result;
+    if (raw == null || typeof raw !== "string") throw new Error("识别结果无效，请重试");
+    const cleanedText = raw.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleanedText);
   } catch (err) {
     console.error("解析失败:", err);
@@ -1050,7 +1052,7 @@ async function generate(profile, imgs, angle) {
   }
 
   const opts = { method: "POST", headers, body: JSON.stringify(body) };
-  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) opts.signal = AbortSignal.timeout(180000);
+  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) opts.signal = AbortSignal.timeout(300000);
   const res = await fetch(`${API_BASE}/generate`, opts);
   let data;
   try {
