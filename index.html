@@ -260,12 +260,23 @@ body {
 <h2 class="text-white font-black mb-6">四视图生成矩阵</h2>
 
 <div id="grid" class="grid grid-cols-2 gap-6 hidden">
-<img id="img0" class="rounded-xl shadow-xl">
-<img id="img1" class="rounded-xl shadow-xl">
-<img id="img2" class="rounded-xl shadow-xl">
-<img id="img3" class="rounded-xl shadow-xl">
+<img id="img0" class="rounded-xl shadow-xl cursor-pointer hover:opacity-90 transition object-cover w-full" title="点击放大">
+<img id="img1" class="rounded-xl shadow-xl cursor-pointer hover:opacity-90 transition object-cover w-full" title="点击放大">
+<img id="img2" class="rounded-xl shadow-xl cursor-pointer hover:opacity-90 transition object-cover w-full" title="点击放大">
+<img id="img3" class="rounded-xl shadow-xl cursor-pointer hover:opacity-90 transition object-cover w-full" title="点击放大">
 </div>
 </main>
+
+<!-- 图片放大预览弹窗 -->
+<div id="preview-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 hidden">
+  <div class="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center">
+    <img id="preview-img" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" alt="预览">
+    <div class="flex gap-3 mt-4">
+      <button id="preview-close" class="px-4 py-2 rounded-lg bg-slate-600 text-white hover:bg-slate-500 transition">关闭</button>
+      <a id="preview-download" href="#" download="ai-photo.png" class="hidden px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-400 transition">下载保存</a>
+    </div>
+  </div>
+</div>
 
 </div>
 
@@ -315,8 +326,43 @@ const paywallModal = document.getElementById("paywall-modal");
 const paywallClose = document.getElementById("paywall-close");
 const vipCodeInput = document.getElementById("vip-code-input");
 const vipCodeBtn = document.getElementById("vip-code-btn");
+const previewModal = document.getElementById("preview-modal");
+const previewImg = document.getElementById("preview-img");
+const previewClose = document.getElementById("preview-close");
+const previewDownload = document.getElementById("preview-download");
 
 let images = [];
+
+function openPreview(src, canDownload) {
+  if (!previewImg || !previewModal) return;
+  previewImg.src = src;
+  if (previewDownload) {
+    if (canDownload) {
+      previewDownload.href = src;
+      previewDownload.download = "ai-photo-" + Date.now() + ".png";
+      previewDownload.classList.remove("hidden");
+    } else {
+      previewDownload.classList.add("hidden");
+    }
+  }
+  previewModal.classList.remove("hidden");
+}
+
+function closePreview() {
+  if (previewModal) previewModal.classList.add("hidden");
+}
+
+if (previewClose) previewClose.addEventListener("click", closePreview);
+if (previewModal) previewModal.addEventListener("click", function (e) {
+  if (e.target === previewModal) closePreview();
+});
+if (grid) grid.addEventListener("click", function (e) {
+  const img = e.target.closest("img");
+  if (img && grid.contains(img)) {
+    e.preventDefault();
+    openPreview(img.src, true);
+  }
+});
 
 // 接口根地址：本地开发默认 localhost；接入云服务器时改为你的域名或 IP（或在 Electron 中通过 window.__API_BASE__ 注入）
 const API_BASE = (typeof window !== "undefined" && window.__API_BASE__) ? window.__API_BASE__ : "http://47.94.145.200:3000";
@@ -875,7 +921,9 @@ async function handleFiles(files) {
         // 图片
         const thumbImg = document.createElement("img");
         thumbImg.src = compressedBase64;
-        thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full";
+        thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full cursor-pointer hover:opacity-90 transition";
+        thumbImg.title = "点击放大";
+        thumbImg.onclick = (e) => { e.stopPropagation(); openPreview(thumbImg.src, false); };
         
         // 删除按钮
         const deleteBtn = document.createElement("button");
@@ -916,7 +964,9 @@ function renderThumbs() {
     
     const thumbImg = document.createElement("img");
     thumbImg.src = compressedBase64;
-    thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full";
+    thumbImg.className = "rounded-lg border border-slate-200 aspect-square object-cover w-full cursor-pointer hover:opacity-90 transition";
+    thumbImg.title = "点击放大";
+    thumbImg.onclick = (e) => { e.stopPropagation(); openPreview(thumbImg.src, false); };
     
     const deleteBtn = document.createElement("button");
     deleteBtn.innerHTML = "×";
