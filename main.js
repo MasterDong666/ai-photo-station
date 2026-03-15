@@ -2,7 +2,6 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startServer } from './server.js';
-import { autoUpdater } from 'electron-updater';
 
 // 在 ES Module 里自己算出 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -10,10 +9,20 @@ const __dirname = path.dirname(__filename);
 
 let mainWindow;
 let httpServer;
+/** 仅打包后才加载，开发时不 import electron-updater，避免打不开 */
+let autoUpdaterRef = null;
 
 async function createWindow() {
   // 打包分发出去的 .dmg：不启动本地 server，所有请求走云端，避免用户机器上暴露 API Key
   const isPackaged = app.isPackaged;
+  if (isPackaged) {
+    try {
+      const mod = await import('electron-updater');
+      autoUpdaterRef = mod.autoUpdater;
+    } catch (e) {
+      console.error('electron-updater 加载失败:', e);
+    }
+  }
   if (!isPackaged) {
     try {
       console.log('🚀 开发模式：正在启动本地后端...');
@@ -61,18 +70,18 @@ async function createWindow() {
   });
 
   // 仅打包后启用自动更新
-  if (app.isPackaged) {
-    autoUpdater.autoDownload = true;
-    autoUpdater.on('update-available', () => {
+  if (autoUpdaterRef) {
+    autoUpdaterRef.autoDownload = true;
+    autoUpdaterRef.on('update-available', () => {
       mainWindow?.webContents?.send('update-available');
     });
-    autoUpdater.on('update-not-available', () => {
+    autoUpdaterRef.on('update-not-available', () => {
       mainWindow?.webContents?.send('update-not-available');
     });
-    autoUpdater.on('update-downloaded', () => {
+    autoUpdaterRef.on('update-downloaded', () => {
       mainWindow?.webContents?.send('update-downloaded');
     });
-    autoUpdater.on('error', (err) => {
+    autoUpdaterRef.on('error', (err) => {
       mainWindow?.webContents?.send('update-error', err.message);
     });
   }
@@ -81,16 +90,16 @@ async function createWindow() {
 // 供渲染进程调用的更新接口
 ipcMain.handle('get-app-version', () => app.getVersion());
 ipcMain.handle('check-for-updates', async () => {
-  if (!app.isPackaged) return { ok: false, reason: 'dev' };
+  if (!app.isPackaged || !autoUpdaterRef) return { ok: false, reason: 'dev' };
   try {
-    const result = await autoUpdater.checkForUpdates();
+    const result = await autoUpdaterRef.checkForUpdates();
     return { ok: true, updateInfo: result?.updateInfo };
   } catch (e) {
     return { ok: false, reason: e.message || String(e) };
   }
 });
 ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall(false, true);
+  if (autoUpdaterRef) autoUpdaterRef.quitAndInstall(false, true);
 });
 
 app.whenReady().then(createWindow);
