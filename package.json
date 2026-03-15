@@ -16,7 +16,8 @@
     "appId": "com.yourname.aiphoto",
     "productName": "AI智能摄影站",
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "category": "public.app-category.photography"
     },
     "win": {
       "target": ["nsis", "portable"]
@@ -27,9 +28,15 @@
     },
     "directories": {
       "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USER",
+      "repo": "YOUR_REPO_NAME"
     }
   },
   "dependencies": {
+    "electron-updater": "^6.3.9",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",

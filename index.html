@@ -147,6 +147,24 @@ body {
         </button>
         <p id="feedback-status" class="text-[11px] text-slate-500"></p>
       </section>
+
+      <!-- 应用更新（仅打包后有效） -->
+      <section id="app-update-section" class="space-y-2 border-t border-slate-800 pt-4">
+        <h4 class="font-semibold text-slate-100 text-sm">应用更新</h4>
+        <p class="text-slate-400 text-xs">当前版本 <span id="app-version" class="font-mono text-slate-300">--</span></p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="check-update-btn" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs text-slate-200 transition">
+            检查更新
+          </button>
+          <span id="update-status" class="text-[11px] text-slate-500"></span>
+        </div>
+        <div id="update-ready-area" class="hidden space-y-2">
+          <p class="text-emerald-400 text-xs">新版本已下载完成，点击下方按钮重启应用即可更新。</p>
+          <button id="install-update-btn" class="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-semibold text-xs transition">
+            立即重启并更新
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </div>
@@ -330,6 +348,16 @@ const previewModal = document.getElementById("preview-modal");
 const previewImg = document.getElementById("preview-img");
 const previewClose = document.getElementById("preview-close");
 const previewDownload = document.getElementById("preview-download");
+const appVersionEl = document.getElementById("app-version");
+const checkUpdateBtn = document.getElementById("check-update-btn");
+const updateStatusEl = document.getElementById("update-status");
+const updateReadyArea = document.getElementById("update-ready-area");
+const installUpdateBtn = document.getElementById("install-update-btn");
+
+let ipcRenderer = null;
+if (typeof require !== "undefined") {
+  try { ipcRenderer = require("electron").ipcRenderer; } catch (e) {}
+}
 
 let images = [];
 
@@ -363,6 +391,45 @@ if (grid) grid.addEventListener("click", function (e) {
     openPreview(img.src, true);
   }
 });
+
+// 应用更新（仅打包后在 Electron 中有效）
+if (ipcRenderer && appVersionEl) {
+  ipcRenderer.invoke("get-app-version").then(function (v) {
+    appVersionEl.textContent = v || "--";
+  }).catch(function () { appVersionEl.textContent = "--"; });
+  if (checkUpdateBtn) {
+    checkUpdateBtn.addEventListener("click", function () {
+      updateStatusEl.textContent = "正在检查更新…";
+      if (updateReadyArea) updateReadyArea.classList.add("hidden");
+      ipcRenderer.invoke("check-for-updates").then(function (r) {
+        if (!r.ok) {
+          if (r.reason === "dev") updateStatusEl.textContent = "开发模式下无法检查更新";
+          else updateStatusEl.textContent = "检查失败：" + (r.reason || "未知");
+        }
+      }).catch(function (e) {
+        updateStatusEl.textContent = "检查失败：" + (e.message || String(e));
+      });
+    });
+  }
+  ipcRenderer.on("update-available", function () {
+    updateStatusEl.textContent = "发现新版本，正在后台下载…";
+  });
+  ipcRenderer.on("update-not-available", function () {
+    updateStatusEl.textContent = "当前已是最新版本";
+  });
+  ipcRenderer.on("update-downloaded", function () {
+    updateStatusEl.textContent = "";
+    if (updateReadyArea) updateReadyArea.classList.remove("hidden");
+  });
+  ipcRenderer.on("update-error", function (_, msg) {
+    updateStatusEl.textContent = "更新出错：" + (msg || "未知");
+  });
+  if (installUpdateBtn) {
+    installUpdateBtn.addEventListener("click", function () {
+      ipcRenderer.invoke("install-update");
+    });
+  }
+}
 
 // 接口根地址：本地开发默认 localhost；接入云服务器时改为你的域名或 IP（或在 Electron 中通过 window.__API_BASE__ 注入）
 const API_BASE = (typeof window !== "undefined" && window.__API_BASE__) ? window.__API_BASE__ : "http://47.94.145.200:3000";

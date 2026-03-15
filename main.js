@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { startServer } from './server.js';
+import { autoUpdater } from 'electron-updater';
 
 // 在 ES Module 里自己算出 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -58,7 +59,39 @@ async function createWindow() {
     }
     mainWindow = null;
   });
+
+  // 仅打包后启用自动更新
+  if (app.isPackaged) {
+    autoUpdater.autoDownload = true;
+    autoUpdater.on('update-available', () => {
+      mainWindow?.webContents?.send('update-available');
+    });
+    autoUpdater.on('update-not-available', () => {
+      mainWindow?.webContents?.send('update-not-available');
+    });
+    autoUpdater.on('update-downloaded', () => {
+      mainWindow?.webContents?.send('update-downloaded');
+    });
+    autoUpdater.on('error', (err) => {
+      mainWindow?.webContents?.send('update-error', err.message);
+    });
+  }
 }
+
+// 供渲染进程调用的更新接口
+ipcMain.handle('get-app-version', () => app.getVersion());
+ipcMain.handle('check-for-updates', async () => {
+  if (!app.isPackaged) return { ok: false, reason: 'dev' };
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { ok: true, updateInfo: result?.updateInfo };
+  } catch (e) {
+    return { ok: false, reason: e.message || String(e) };
+  }
+});
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
 
 app.whenReady().then(createWindow);
 
