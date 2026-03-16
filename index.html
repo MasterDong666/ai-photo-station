@@ -1188,7 +1188,8 @@ async function generate(profile, imgs, angle) {
     throw new Error(res.statusText || "请求失败，请重试");
   }
   if (res.status === 402) throw new Error(data?.error || "今日免费额度已用完");
-  if (!res.ok) throw new Error(data?.error || "生成失败，请重试");
+  // 后端可能返回包含内部 URL / 密钥等调试信息，这里统一用友好提示文案
+  if (!res.ok) throw new Error("生成失败，请稍后重试");
   return "data:image/png;base64," + data.image;
 }
 
@@ -1252,8 +1253,9 @@ btn.onclick = async ()=>{
     log.innerText+="\n✅ 生成完成";
     clearBtn.classList.remove("hidden");
   } catch (e) {
-    log.innerText += "\n❌ " + (e?.message || "生成失败");
-    alert(e?.message || "生成失败，请重试");
+    console.error("生成失败:", e);
+    log.innerText += "\n❌ 生成失败，请稍后重试";
+    alert("生成失败，请稍后重试");
     grid.classList.remove("hidden");
   }
   btn.disabled = false;
