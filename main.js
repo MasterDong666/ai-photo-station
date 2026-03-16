@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startServer } from './server.js';
 
 // 在 ES Module 里自己算出 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -18,13 +17,19 @@ async function createWindow() {
   if (isPackaged) {
     try {
       const mod = await import('electron-updater');
-      autoUpdaterRef = mod.autoUpdater;
+      // 兼容 CJS / ESM 导出形式
+      autoUpdaterRef = mod.autoUpdater || (mod.default && mod.default.autoUpdater) || null;
+      if (!autoUpdaterRef) {
+        console.error('electron-updater 加载成功但未找到 autoUpdater 导出');
+      }
     } catch (e) {
       console.error('electron-updater 加载失败:', e);
     }
   }
   if (!isPackaged) {
     try {
+      // 仅开发时按需加载 server，避免打包后因 import server 而触发 db 在只读目录打开导致 SQLITE_CANTOPEN
+      const { startServer } = await import('./server.js');
       console.log('🚀 开发模式：正在启动本地后端...');
       httpServer = await startServer(3000);
       console.log('✅ 本地后端已启动');
@@ -57,8 +62,10 @@ async function createWindow() {
   // 3. 加载网页
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  // 🟢 关键：打开开发者工具，让你看到哪里报错
-  mainWindow.webContents.openDevTools();
+  // 仅开发模式下自动打开开发者工具，打包后的正式版本不弹出控制台
+  if (!isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on('closed', () => {
     // 关闭服务器
@@ -90,7 +97,8 @@ async function createWindow() {
 // 供渲染进程调用的更新接口
 ipcMain.handle('get-app-version', () => app.getVersion());
 ipcMain.handle('check-for-updates', async () => {
-  if (!app.isPackaged || !autoUpdaterRef) return { ok: false, reason: 'dev' };
+  if (!app.isPackaged) return { ok: false, reason: 'dev' };
+  if (!autoUpdaterRef) return { ok: false, reason: 'updater-missing' };
   try {
     const result = await autoUpdaterRef.checkForUpdates();
     return { ok: true, updateInfo: result?.updateInfo };

@@ -403,8 +403,13 @@ if (ipcRenderer && appVersionEl) {
       if (updateReadyArea) updateReadyArea.classList.add("hidden");
       ipcRenderer.invoke("check-for-updates").then(function (r) {
         if (!r.ok) {
-          if (r.reason === "dev") updateStatusEl.textContent = "开发模式下无法检查更新";
-          else updateStatusEl.textContent = "检查失败：" + (r.reason || "未知");
+          if (r.reason === "dev") {
+            updateStatusEl.textContent = "开发模式下无法检查更新";
+          } else if (r.reason === "updater-missing") {
+            updateStatusEl.textContent = "当前安装包未集成自动更新模块，无法检查更新";
+          } else {
+            updateStatusEl.textContent = "检查失败：" + (r.reason || "未知");
+          }
         }
       }).catch(function (e) {
         updateStatusEl.textContent = "检查失败：" + (e.message || String(e));

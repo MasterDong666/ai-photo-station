@@ -1,6 +1,6 @@
 {
   "name": "ai-photo-station-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "main.js",
   "type": "module",
@@ -31,8 +31,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "YOUR_GITHUB_USER",
-      "repo": "YOUR_REPO_NAME"
+      "owner": "MasterDong666",
+      "repo": "ai-photo-station"
     }
   },
   "dependencies": {
