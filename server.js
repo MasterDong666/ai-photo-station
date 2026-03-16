@@ -370,7 +370,8 @@ app.post("/generate", requireDb, authMiddleware, async (req, res) => {
     const { prompt, images, angle, profile, stylePreset, lighting, material } = req.body;
     if (!images || !images[0]) return res.status(400).json({ error: "图片丢失" });
 
-    const MODEL_ID = "gemini-2.5-flash-image";
+    // 改回通用对话模型出图，成本更低
+    const MODEL_ID = "gemini-2.5-flash";
 
     // 优先使用预设（开箱即用、一致）；兼容旧版只传 prompt
     let fullText;
