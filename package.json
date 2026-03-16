@@ -1,6 +1,6 @@
 {
   "name": "ai-photo-station-backend",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "",
   "main": "main.js",
   "type": "module",
@@ -15,8 +15,9 @@
   "build": {
     "appId": "com.yourname.aiphoto",
     "productName": "AI智能摄影站",
+    "artifactName": "ai-photo-station-${version}-${os}-${arch}.${ext}",
     "mac": {
-      "target": "dmg",
+      "target": ["dmg", "zip"],
       "category": "public.app-category.photography"
     },
     "win": {

@@ -85,25 +85,29 @@ body {
       <!-- 会员模块 -->
       <section id="membership-section" class="space-y-3 border-t border-slate-800 pt-4">
         <div class="flex items-center justify-between">
-          <h4 class="font-semibold text-slate-100 text-sm">会员权益</h4>
+          <h4 class="font-semibold text-slate-100 text-sm">会员权益（模拟支付）</h4>
           <span id="membership-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
             当前：免费版
           </span>
         </div>
-        <p class="text-slate-400">升级后将解锁无限次生成、更快的响应优先级以及后续的批量生成等高级功能。</p>
+        <p class="text-slate-400 text-xs">
+          升级后将解锁无限次生成、更快的响应优先级以及后续的批量生成等高级功能。当前为
+          <span class="font-semibold text-emerald-300">演示环境</span>，点击下面套餐按钮将直接在后端模拟支付并开通对应会员，
+          <span class="underline">不会真实扣款</span>。
+        </p>
 
         <div class="grid grid-cols-3 gap-2 text-[11px]">
           <button data-plan="month" class="plan-btn rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-2 py-2 text-left hover:bg-emerald-500/20">
-            <div class="font-semibold text-emerald-300">月度</div>
-            <div class="text-slate-400 mt-1">适合临时冲刺</div>
+            <div class="font-semibold text-emerald-300">月度 · ¥1</div>
+            <div class="text-slate-400 mt-1">适合临时冲刺（模拟）</div>
           </button>
           <button data-plan="quarter" class="plan-btn rounded-xl border border-amber-400/60 bg-amber-500/5 px-2 py-2 text-left hover:bg-amber-500/15">
-            <div class="font-semibold text-amber-300">季度</div>
-            <div class="text-slate-400 mt-1">性价比优选</div>
+            <div class="font-semibold text-amber-300">季度 · ¥2</div>
+            <div class="text-slate-400 mt-1">性价比优选（模拟）</div>
           </button>
           <button data-plan="year" class="plan-btn rounded-xl border border-sky-400/60 bg-sky-500/5 px-2 py-2 text-left hover:bg-sky-500/15">
-            <div class="font-semibold text-sky-300">年度</div>
-            <div class="text-slate-400 mt-1">专业创作者推荐</div>
+            <div class="font-semibold text-sky-300">年度 · ¥3</div>
+            <div class="text-slate-400 mt-1">专业创作者推荐（模拟）</div>
           </button>
         </div>
 
@@ -121,10 +125,10 @@ body {
               激活
             </button>
           </div>
-          <p class="text-[11px] text-slate-500">当前仅为本地演示：输入正确激活码会在本机解锁永久专业版，方便后续接入真实后端。</p>
+          <p class="text-[11px] text-slate-500">当前仅为本地演示：输入正确激活码或点击上方套餐按钮都会在本机直接写入会员信息，方便后续接入真实支付与服务端。</p>
         </div>
 
-        <p class="text-[11px] text-slate-500">当前页面仅为前端演示，点击套餐或使用激活码会在本地标记为专业版，方便后续接入真实支付与服务端。</p>
+        <p class="text-[11px] text-slate-500">当前页面仅为前端 + 本地后端演示（模拟支付），后续接入微信/支付宝等真实支付时，可沿用同一套订阅与会员逻辑。</p>
       </section>
 
       <!-- 账号信息 & 退出 -->
