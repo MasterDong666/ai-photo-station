@@ -62,10 +62,8 @@ async function createWindow() {
   // 3. 加载网页
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  // 仅开发模式下自动打开开发者工具，打包后的正式版本不弹出控制台
-  if (!isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
+  // 开发版和打包版都自动打开开发者工具，方便你随时查看报错
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     // 关闭服务器

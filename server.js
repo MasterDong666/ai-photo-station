@@ -370,8 +370,8 @@ app.post("/generate", requireDb, authMiddleware, async (req, res) => {
     const { prompt, images, angle, profile, stylePreset, lighting, material } = req.body;
     if (!images || !images[0]) return res.status(400).json({ error: "图片丢失" });
 
-    // 改回通用对话模型出图，成本更低
-    const MODEL_ID = "gemini-2.5-flash";
+    // 出图必须用 image 模型，chat 模型不支持 responseModalities: ["IMAGE"]
+    const MODEL_ID = "gemini-2.5-flash-image";
 
     // 优先使用预设（开箱即用、一致）；兼容旧版只传 prompt
     let fullText;
@@ -385,12 +385,17 @@ app.post("/generate", requireDb, authMiddleware, async (req, res) => {
     // 随机 seed 让每次请求有不同随机性，避免 4 张图雷同
     const randomSeed = Math.floor(Math.random() * 2147483647);
 
-    const response = await fetch(
-      `${BASE_URL}/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 单张最多等 3 分钟
+    let response;
+    try {
+      response = await fetch(
+        `${BASE_URL}/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
           contents: [{
             parts: [
               { text: fullText },
@@ -407,8 +412,11 @@ app.post("/generate", requireDb, authMiddleware, async (req, res) => {
             seed: randomSeed
           }
         })
-      }
-    );
+        }
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     const result = await response.json();
 
